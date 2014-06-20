@@ -1,4 +1,4 @@
 fieldtrip-map-mbtiles
 =====================
 
-A plugin for Fieltrip Open for adding mbtiles layers on the phone
+Map Mbtiles is a Fieldtrip Open plugin for adding mbtiles to the map.
