@@ -1,0 +1,14 @@
+{
+    "header": {
+        "buttons" : {
+            "layers": {
+                "href": "layers.html",
+                "class": "user-layers",
+                "data-role": "button",
+                "data-inline": "true",
+                "data-transition": "none",
+                "data-iconpos": "notext"
+            }
+        }
+    }
+}
