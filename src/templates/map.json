@@ -1,13 +1,21 @@
 {
     "header": {
         "buttons" : {
-            "layers": {
-                "href": "layers.html",
+            "user-layers":{
+                "href": "#layers-panel",
                 "class": "user-layers",
                 "data-role": "button",
                 "data-inline": "true",
                 "data-transition": "none",
                 "data-iconpos": "notext"
+            }
+        }
+    },
+    "popups": {
+        "popup2":{
+            "template": "map-layers.html",
+            "data": {
+                
             }
         }
     }

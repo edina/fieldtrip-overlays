@@ -41,11 +41,13 @@ define(['utils'], function(utils){
                 {create: true, exclusive: false},
                 function(dir){
                     //assetsDir = dir;
-                    console.log("layers folder was created")
+                    console.log("layers folder was created");
                 },
                 function(error){
                     utils.inform('Failed finding assets directory. Saving will be disabled: ' + error);
                 });
         });
     }
+    
+    $('head').prepend('<link rel="stylesheet" href="plugins/map-mbtiles/css/style.css" type="text/css" />');
 });
