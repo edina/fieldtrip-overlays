@@ -31,23 +31,29 @@ DAMAGE.
 
 "use strict";
 
-define(['utils'], function(utils){
-    
+define(['utils', 'plugins/sync/js/download'], function(utils, download){
+    var layersDir;
+
     if(utils.isMobileDevice()){
-        // create directory structure for annotations
-        utils.getPersistentRoot(function(root){
-            root.getDirectory(
-                "layers",
-                {create: true, exclusive: false},
-                function(dir){
-                    //assetsDir = dir;
-                    console.log("layers folder was created");
-                },
-                function(error){
-                    utils.inform('Failed finding assets directory. Saving will be disabled: ' + error);
-                });
+        // create directory structure for layers
+        utils.createDir('tiles', function(dir){
+            layersDir = dir;
         });
     }
     
+    $(document).on(
+        'vclick',
+        '.sync-download-layers-button',
+        function(){
+            utils.showPageLoadingMsg('Download Layers ...');
+            download.downloadItems(layersDir, 'tiles', function(success){
+                if(success){
+                    $.mobile.hidePageLoadingMsg();
+                    $.mobile.changePage('map.html');
+                }
+            });
+        }
+    );
+
     $('head').prepend('<link rel="stylesheet" href="plugins/map-mbtiles/css/style.css" type="text/css" />');
 });
