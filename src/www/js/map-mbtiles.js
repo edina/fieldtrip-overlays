@@ -31,16 +31,16 @@ DAMAGE.
 
 "use strict";
 
-define(['utils', 'settings', 'config', 'plugins/sync/js/login',
+define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
         'plugins/sync/js/download',
         'plugins/sync/js/pcapi'],
-       function(utils, settings, config, login, download, pcapi){
+       function(utils, settings, config, map, login, download, pcapi){// jshint ignore:line
 
-    var layersDir, root, layers = new Array();
+    var layersDir, root, layers = [];
 
     var createLayersListForDownload = function(){
         var $layersList = $(".layers-list");
-        var list = new Array();
+        var list = [];
 
         pcapi.setUserId(login.getUser().id);
         utils.showPageLoadingMsg('Checking for Layers ');
@@ -57,7 +57,7 @@ define(['utils', 'settings', 'config', 'plugins/sync/js/login',
                 $.each(data.metadata, $.proxy(function(i, item){
                     var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
                     list.push('<li><a href="javascript:void(0)" class="download-layer">'+fileName+'</a></li>');
-                }, this))
+                }, this));
             }
             else{
                 utils.inform('No layers to sync');
@@ -70,7 +70,7 @@ define(['utils', 'settings', 'config', 'plugins/sync/js/login',
 
     var createLayersListForMap = function(){
         var $layersList = $(".layers-list");
-        var list = new Array();f
+        var list = [];
         list.push('<li data-role="list-divider">On device</li>');
         if(layers.length>0){
             for(var i=0; i<layers.length; i++){
@@ -80,6 +80,43 @@ define(['utils', 'settings', 'config', 'plugins/sync/js/login',
         $layersList.html(list.join(""));
         $layersList.listview("refresh");
     };
+
+    var MapWithMBTiles = OpenLayers.Class(OpenLayers.Layer.TMS, {
+        initialize: function(options) {
+            var baseLayer = map.getBaseLayer();
+            var name = options.name;
+            this.layername = options.name;
+            this.type = baseLayer.type;
+            this.dbname = options.dbname;
+            
+            //var baseLayer = map.getBaseLayer();
+            //this.serviceVersion = baseLayer.serviceVersion;
+            //this.layername = baseLayer.layername;
+            //this.type = baseLayer.type;
+            //this.dbname = options.dbname;
+
+            // this boolean determines which overriden method is called getURLasync
+            // or getURL. Using getURLasync was causing the application to freeze,
+            // often getting a ANR
+            this.async = typeof(webdb) !== 'undefined';
+
+            this.isBaseLayer = true;
+            OpenLayers.Layer.TMS.prototype.initialize.apply(
+                this,
+                [name, options.url, {}]
+            );
+        },
+        getURLasync: function(bounds, callback, scope) {
+            var url = OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
+            var data = url.match(/\/(\d+)/g).join("").split("/");
+            var db = new MBTilesDB(this.dbname);
+            db.open();
+            db.getTiles(callback, scope, data[2], data[3], data[1], url);
+        },
+        getURL: function(bounds) {
+            return OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
+        },
+    });
 
     if(utils.isMobileDevice()){
         // check settings first for defined pcapi root url
@@ -108,14 +145,13 @@ define(['utils', 'settings', 'config', 'plugins/sync/js/login',
     pcapi.setProvider('dropbox');
 
     $(document).on('pageshow', '#map-page', createLayersListForMap);
-    $(document).on('pageshow', '#saved-layers-page', createLayersListForDownoad);
+    $(document).on('pageshow', '#saved-layers-page', createLayersListForDownload);
 
     $(document).off('vclick', '.download-layer');
     $(document).on(
         'vclick',
         '.download-layer',
         function(){
-            console.log('skata')
             var layer = $(this).text();
             var $popup = $('#saved-layers-download-popup');
             var text;
@@ -126,6 +162,7 @@ define(['utils', 'settings', 'config', 'plugins/sync/js/login',
                 text = "You are going to download layer "+layer;
             }
             $popup.empty();
+            /*jshint multistr: true */
             $popup.append(
                 '<div data-theme="d" class="ui-corner-all ui-content">\
                 <p>'+text+'\
@@ -156,12 +193,24 @@ define(['utils', 'settings', 'config', 'plugins/sync/js/login',
                     download.downloadItem(options, function(){
                         $.mobile.hidePageLoadingMsg();
                         $.mobile.changePage('map.html');
-                        createLayersList(downloads);
+                        createLayersListForMap();
                     });
                 }
             );
         }
     );
+
+    $(document).off('vclick', '.show-layer');
+    $(document).on('vclick', '.show-layer', function(event){
+        $.mobile.changePage('map.html');
+        var layerName = $(this).text();
+        console.log(map.checkIfLayerExists(layerName))
+        if(!map.checkIfLayerExists(layerName)){
+            console.log('xxxx')
+            var tileLayer = new MapWithMBTiles({name: layerName, dbname: utils.getFilePath(layersDir)+'/'+layerName});
+            map.addTMSLayer(tileLayer);
+        }
+    });
 
     $('head').prepend('<link rel="stylesheet" href="plugins/map-mbtiles/css/style.css" type="text/css" />');
 });

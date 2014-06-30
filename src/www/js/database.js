@@ -31,14 +31,13 @@ DAMAGE.
 
 "use strict";
 
-define(['utils'], function(utils){
-    var localdb, dbname;
+define([], function(){
+    var localdb;
     
-    var initDB = function(name){
+    var initDB = function(dbname){
         console.log("init db");
-        dbname = utils.getPersistentRoot()+"/tiles/"+name;
         if(!window.sqlitePlugin){
-            console.log("The is something wrong with slqite phonegap plugin");
+            console.log("The is something wrong with slqite cordova plugin");
         }else{
             localdb = window.sqlitePlugin.openDatabase({name: dbname});
             console.log("success opening db: "+dbname);
