@@ -33,8 +33,9 @@ DAMAGE.
 
 define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
         'plugins/sync/js/download',
-        'plugins/sync/js/pcapi'],
-       function(utils, settings, config, map, login, download, pcapi){// jshint ignore:line
+        'plugins/sync/js/pcapi',
+        './database'],
+       function(utils, settings, config, map, login, download, pcapi, db){// jshint ignore:line
 
     var layersDir, root, layers = [];
 
@@ -109,8 +110,7 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
         getURLasync: function(bounds, callback, scope) {
             var url = OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
             var data = url.match(/\/(\d+)/g).join("").split("/");
-            var db = new MBTilesDB(this.dbname);
-            db.open();
+            db.open(this.dbname);
             db.getTiles(callback, scope, data[2], data[3], data[1], url);
         },
         getURL: function(bounds) {
@@ -204,9 +204,9 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
     $(document).on('vclick', '.show-layer', function(event){
         $.mobile.changePage('map.html');
         var layerName = $(this).text();
-        console.log(map.checkIfLayerExists(layerName))
+        console.log(map.checkIfLayerExists(layerName));
         if(!map.checkIfLayerExists(layerName)){
-            console.log('xxxx')
+            console.log('xxxx');
             var tileLayer = new MapWithMBTiles({name: layerName, dbname: utils.getFilePath(layersDir)+'/'+layerName});
             map.addTMSLayer(tileLayer);
         }

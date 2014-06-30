@@ -48,7 +48,7 @@ define([], function(){
         console.warn("There has been an error: " + e.message);
     };
 
-    var getCachedTilePath = function(callback, scope, x, y, z, url ){
+    var getCachedTilePath = function(callback, scope, x, y, z, url ){// jshint ignore:line
 
         var resultsCallback = function(tx, rs) {
             //console.log('resultsCallback *********************' );
@@ -57,24 +57,24 @@ define([], function(){
             if(callback) {
                 console.log(rs.rows.length);
                 if( rs.rows.length > 0 ) {
-                    console.log("rows big 0")
+                    console.log("rows big 0");
 
                     var rowOutput  = rs.rows.item(0);
-                    var tile_data = rowOutput['tile_data'];
-                    callback.call(scope,"data:image/png;base64,"+tile_data);
+                    var tileData = rowOutput.tileData;
+                    callback.call(scope,"data:image/png;base64,"+tileData);
                 } else {
                     callback.call(scope, "img/empty.png");
                 }
             }
-        }
+        };
     
         localdb.transaction(function(tx) {
-            tx.executeSql("SELECT tile_data as tile_data FROM tiles where zoom_level=? AND tile_column=? AND tile_row=?", [z,x,y], resultsCallback, onError);
+            tx.executeSql("SELECT tile_data as tileData FROM tiles where zoom_level=? AND tile_column=? AND tile_row=?", [z,x,y], resultsCallback, onError);// jshint ignore:line
         });
     };
 
     return {
         "open": initDB,
         "getTiles": getCachedTilePath
-    }
+    };
 });
