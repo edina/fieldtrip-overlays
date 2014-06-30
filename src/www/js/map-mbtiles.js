@@ -31,27 +31,135 @@ DAMAGE.
 
 "use strict";
 
-define(['utils', 'plugins/sync/js/download'], function(utils, download){
-    var layersDir;
+define(['utils', 'settings', 'config', 'plugins/sync/js/login',
+        'plugins/sync/js/download',
+        'plugins/sync/js/pcapi'],
+       function(utils, settings, config, login, download, pcapi){
+
+    var layersDir, root, layers = new Array();
+
+    var createLayersListForDownload = function(){
+        var $layersList = $(".layers-list");
+        var list = new Array();
+
+        pcapi.setUserId(login.getUser().id);
+        utils.showPageLoadingMsg('Checking for Layers ');
+        //fetch the metadata from mbtiles and add them to the listview
+        pcapi.getItems('tiles', function(success, data){
+            list.push('<li data-role="list-divider">On device</li>');
+            if(layers.length>0){
+                for(var i=0; i<layers.length; i++){
+                    list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+                }
+            }
+            list.push('<li data-role="list-divider">On cloud</li>');
+            if(success){
+                $.each(data.metadata, $.proxy(function(i, item){
+                    var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                    list.push('<li><a href="javascript:void(0)" class="download-layer">'+fileName+'</a></li>');
+                }, this))
+            }
+            else{
+                utils.inform('No layers to sync');
+            }
+            $layersList.html(list.join(""));
+            $layersList.listview("refresh");
+            $.mobile.hidePageLoadingMsg();
+        });
+    };
+
+    var createLayersListForMap = function(){
+        var $layersList = $(".layers-list");
+        var list = new Array();f
+        list.push('<li data-role="list-divider">On device</li>');
+        if(layers.length>0){
+            for(var i=0; i<layers.length; i++){
+                list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+            }
+        }
+        $layersList.html(list.join(""));
+        $layersList.listview("refresh");
+    };
 
     if(utils.isMobileDevice()){
+        // check settings first for defined pcapi root url
+        root = settings.get("pcapi-url");
+        if(root === undefined){
+            root = config.pcapiurl;
+        }
         // create directory structure for layers
         utils.createDir('tiles', function(dir){
             layersDir = dir;
-        });
-    }
-    
-    $(document).on(
-        'vclick',
-        '.sync-download-layers-button',
-        function(){
-            utils.showPageLoadingMsg('Download Layers ...');
-            download.downloadItems(layersDir, 'tiles', function(success){
-                if(success){
-                    $.mobile.hidePageLoadingMsg();
-                    $.mobile.changePage('map.html');
+            var directoryReader = layersDir.createReader();
+            directoryReader.readEntries(function(entries){
+                for(var i=0;i<entries.length;i++){
+                    layers.push(entries[i].name);
                 }
             });
+        });
+    }
+    else{
+        root = 'http://' + location.hostname;
+        if(location.port){
+            root += ':' + location.port;
+        }
+    }
+    pcapi.init({"url": root, "version": config.pcapiversion});
+    pcapi.setProvider('dropbox');
+
+    $(document).on('pageshow', '#map-page', createLayersListForMap);
+    $(document).on('pageshow', '#saved-layers-page', createLayersListForDownoad);
+
+    $(document).off('vclick', '.download-layer');
+    $(document).on(
+        'vclick',
+        '.download-layer',
+        function(){
+            console.log('skata')
+            var layer = $(this).text();
+            var $popup = $('#saved-layers-download-popup');
+            var text;
+            if($.inArray(layer, layers)){
+                text = "The layer "+layer+" already exists. Do you still want to download it?";
+            }
+            else{
+                text = "You are going to download layer "+layer;
+            }
+            $popup.empty();
+            $popup.append(
+                '<div data-theme="d" class="ui-corner-all ui-content">\
+                <p>'+text+'\
+                </p>\
+                <a href="#"\
+                  data-theme="a"\
+                  data-role="button"\
+                  data-inline="true"\
+                  data-rel="back">Cancel</a>\
+                <a class="download-layer-confirm"\
+                  data-theme="a"\
+                  href="#"\
+                  data-role="button"\
+                  data-inline="true">Continue</a>\
+                </div>').trigger('create');
+            $popup.popup('open');
+
+            $(document).off('vmousedown', '.download-layer-confirm');
+            $(document).on(
+                'vmousedown',
+                '.download-layer-confirm',
+                function(event){
+                    event.preventDefault();
+                    $popup.popup('close');
+
+                    utils.showPageLoadingMsg('Download Layer '+layer);
+                    var options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir};
+                    download.downloadItem(options, function(){
+                        $.mobile.hidePageLoadingMsg();
+                        $.mobile.changePage('map.html');
+                        createLayersList(downloads);
+                    });
+                }
+            );
         }
     );
 

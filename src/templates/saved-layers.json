@@ -1,0 +1,23 @@
+{
+    "body": {
+        "header": "View Layers",
+        "buttons-toggle" : {}
+    },
+    "popups": {
+        "popup1":{
+            "template": "saved-layers-popup1.html",
+            "data": {
+                "question": "Are you sure you want to delete layer",
+                "cancel": "Cancel",
+                "delete": "Delete"
+            }
+        },
+        "popup2":{
+            "template": "saved-layers-popup2.html",
+            "data": {
+                "cancel": "Cancel",
+                "confirm": "Confirm"
+            }
+        }
+    }
+}
