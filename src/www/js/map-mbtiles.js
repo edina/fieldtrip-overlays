@@ -72,45 +72,62 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
     var createLayersListForMap = function(){
         var $layersList = $(".layers-list");
         var list = [];
-        list.push('<li data-role="list-divider">On device</li>');
-        if(layers.length>0){
-            for(var i=0; i<layers.length; i++){
-                list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+        if(utils.isMobileDevice()){
+            list.push('<li data-role="list-divider">On device</li>');
+            if(layers.length>0){
+                for(var i=0; i<layers.length; i++){
+                    list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+                }
             }
+            $layersList.html(list.join(""));
+            $layersList.listview("refresh");
         }
-        $layersList.html(list.join(""));
-        $layersList.listview("refresh");
+        else{
+            pcapi.setUserId(login.getUser().id);
+            pcapi.getItems('tiles', function(success, data){
+                list.push('<li data-role="list-divider">OnLine</li>');
+                if(success){
+                    $.each(data.metadata, $.proxy(function(i, item){
+                        var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                        list.push('<li><a href="javascript:void(0)" class="show-layer">'+fileName+'</a></li>');
+                    }, this));
+                    $layersList.html(list.join(""));
+                    $layersList.listview("refresh");
+                }
+                else{
+                    utils.inform('No layers to sync');
+                }
+            });
+        }
     };
 
-    var MapWithMBTiles = OpenLayers.Class(OpenLayers.Layer.TMS, {
+    var MapWithLocalMBTiles = OpenLayers.Class(OpenLayers.Layer.TMS, {
         initialize: function(options) {
-            var baseLayer = map.getBaseLayer();
-            var name = options.name;
-            this.layername = options.name;
-            this.type = baseLayer.type;
+            this.serviceVersion = options.serviceVersion;
+            this.layername = options.layerName;
+            this.type = options.type;
             this.dbname = options.dbname;
-            
-            //var baseLayer = map.getBaseLayer();
-            //this.serviceVersion = baseLayer.serviceVersion;
-            //this.layername = baseLayer.layername;
-            //this.type = baseLayer.type;
-            //this.dbname = options.dbname;
+            this.isBaseLayer = options.isBaseLayer;
+            this.opacity = options.opacity;
+            this.visibility = true;
 
             // this boolean determines which overriden method is called getURLasync
             // or getURL. Using getURLasync was causing the application to freeze,
             // often getting a ANR
-            this.async = typeof(webdb) !== 'undefined';
+            //this.async = typeof(webdb) !== 'undefined';
+            this.async = true;
+            if(this.async === true){
+                db.open(this.dbname);
+            }
 
-            this.isBaseLayer = true;
             OpenLayers.Layer.TMS.prototype.initialize.apply(
                 this,
-                [name, options.url, {}]
+                [options.name, options.url, {}]
             );
         },
         getURLasync: function(bounds, callback, scope) {
             var url = OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
             var data = url.match(/\/(\d+)/g).join("").split("/");
-            db.open(this.dbname);
             db.getTiles(callback, scope, data[2], data[3], data[1], url);
         },
         getURL: function(bounds) {
@@ -142,6 +159,7 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
         }
     }
     pcapi.init({"url": root, "version": config.pcapiversion});
+    //TODO getit externally
     pcapi.setProvider('dropbox');
 
     $(document).on('pageshow', '#map-page', createLayersListForMap);
@@ -190,6 +208,7 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
 
                     utils.showPageLoadingMsg('Download Layer '+layer);
                     var options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir};
+                    //TODO rename the file while downloading it
                     download.downloadItem(options, function(){
                         $.mobile.hidePageLoadingMsg();
                         $.mobile.changePage('map.html');
@@ -203,12 +222,38 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
     $(document).off('vclick', '.show-layer');
     $(document).on('vclick', '.show-layer', function(event){
         $.mobile.changePage('map.html');
-        var layerName = $(this).text();
-        console.log(map.checkIfLayerExists(layerName));
-        if(!map.checkIfLayerExists(layerName)){
-            console.log('xxxx');
-            var tileLayer = new MapWithMBTiles({name: layerName, dbname: utils.getFilePath(layersDir)+'/'+layerName});
-            map.addTMSLayer(tileLayer);
+        var layerName = $(this).text(), projections;
+        if(utils.isMobileDevice()){
+            console.log(map.checkIfLayerExists(layerName));
+            if(!map.checkIfLayerExists(layerName)){
+                console.log(layerName);
+                console.log(utils.getMapServerUrl());
+                var tileLayer = new MapWithLocalMBTiles({
+                    name: layerName,
+                    dbname: utils.getFilePath(layersDir)+'/'+layerName.split(".")[0],
+                    url: utils.getMapServerUrl(),
+                    layerName: layerName,
+                    type: 'png',
+                    isBaseLayer: false,
+                    opacity: 0.5,
+                    serviceVersion: ''
+                });
+                map.addMapLayer(tileLayer);
+                //map.switchBaseLayer(tileLayer);
+                projections = map.getProjections();
+                //TODO get the bbox from the database
+                map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]));
+            }
+        }
+        else{
+            //TODO get rid of it or get the url externally
+            map.addRemoteMBTilesLayer({
+                "name": layerName,
+                "url": "<url>",
+                "db": layerName
+            });
+            projections = map.getProjections();
+            map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]))
         }
     });
 
