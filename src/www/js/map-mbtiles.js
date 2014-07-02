@@ -31,11 +31,12 @@ DAMAGE.
 
 "use strict";
 
-define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
+define(['utils', 'settings', 'config', 'map', 'file',
+        'plugins/sync/js/login',
         'plugins/sync/js/download',
         'plugins/sync/js/pcapi',
         './database'],
-       function(utils, settings, config, map, login, download, pcapi, db){// jshint ignore:line
+       function(utils, settings, config, map, file, login, download, pcapi, db){// jshint ignore:line
 
     var layersDir, root, layers = [];
 
@@ -142,7 +143,7 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
             root = config.pcapiurl;
         }
         // create directory structure for layers
-        utils.createDir('tiles', function(dir){
+        file.createDir('tiles', function(dir){
             layersDir = dir;
             var directoryReader = layersDir.createReader();
             directoryReader.readEntries(function(entries){
@@ -224,13 +225,10 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
         $.mobile.changePage('map.html');
         var layerName = $(this).text(), projections;
         if(utils.isMobileDevice()){
-            console.log(map.checkIfLayerExists(layerName));
             if(!map.checkIfLayerExists(layerName)){
-                console.log(layerName);
-                console.log(utils.getMapServerUrl());
                 var tileLayer = new MapWithLocalMBTiles({
                     name: layerName,
-                    dbname: utils.getFilePath(layersDir)+'/'+layerName.split(".")[0],
+                    dbname: file.getFilePathWithoutCDV(layersDir)+'/'+layerName.split(".")[0],
                     url: utils.getMapServerUrl(),
                     layerName: layerName,
                     type: 'png',
@@ -239,7 +237,6 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
                     serviceVersion: ''
                 });
                 map.addMapLayer(tileLayer);
-                //map.switchBaseLayer(tileLayer);
                 projections = map.getProjections();
                 //TODO get the bbox from the database
                 map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]));
@@ -253,7 +250,7 @@ define(['utils', 'settings', 'config', 'map', 'plugins/sync/js/login',
                 "db": layerName
             });
             projections = map.getProjections();
-            map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]))
+            map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]));
         }
     });
 
