@@ -208,7 +208,14 @@ define(['utils', 'settings', 'config', 'map', 'file',
                     $popup.popup('close');
 
                     utils.showPageLoadingMsg('Download Layer '+layer);
-                    var options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir};
+                    var options;
+                    if(layer.indexOf("mbtiles")){
+                        var localFileName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
+                        options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir, "localFileName": localFileName};
+                    }
+                    else{
+                        options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir};
+                    }
                     //TODO rename the file while downloading it
                     download.downloadItem(options, function(){
                         $.mobile.hidePageLoadingMsg();
