@@ -40,6 +40,22 @@ define(['utils', 'settings', 'config', 'map', 'file',
 
     var layersDir, root, layers = [];
 
+    var checkForLayers = function(dir, callback){
+        var directoryReader = dir.createReader();
+        directoryReader.readEntries(function(entries){
+            for(var i=0;i<entries.length;i++){
+                //Android creates automatically a <dbname>.db-journal file when
+                //it opens the db. We don't want to list it.
+                if(entries[i].name.indexOf("db-journal") === -1){
+                    layers.push(entries[i].name);
+                }
+            }
+            if(callback){
+                callback(layers);
+            }
+        });
+    };
+
     var createLayersListForDownload = function(){
         var $layersList = $(".layers-list");
         var list = [];
@@ -70,7 +86,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
         });
     };
 
-    var createLayersListForMap = function(){
+    var createLayersListForMap = function(layers){
         var $layersList = $(".layers-list");
         var list = [];
         if(utils.isMobileDevice()){
@@ -145,16 +161,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
         // create directory structure for layers
         file.createDir('tiles', function(dir){
             layersDir = dir;
-            var directoryReader = layersDir.createReader();
-            directoryReader.readEntries(function(entries){
-                for(var i=0;i<entries.length;i++){
-                    //Android creates automatically a <dbname>.db-journal file when
-                    //it opens the db. We don't want to list it.
-                    if(entries[i].name.indexOf("db-journal") === -1){
-                        layers.push(entries[i].name);
-                    }
-                }
-            });
+            checkForLayers(layersDir);
         });
     }
     else{
@@ -167,7 +174,9 @@ define(['utils', 'settings', 'config', 'map', 'file',
     //TODO getit externally
     pcapi.setProvider('dropbox');
 
-    $(document).on('pageshow', '#map-page', createLayersListForMap);
+    $(document).on('pageshow', '#map-page', function(){
+        createLayersListForMap(layers);
+    });
     $(document).on('pageshow', '#saved-layers-page', createLayersListForDownload);
 
     $(document).off('vclick', '.download-layer');
@@ -223,8 +232,10 @@ define(['utils', 'settings', 'config', 'map', 'file',
                     //TODO rename the file while downloading it
                     download.downloadItem(options, function(){
                         $.mobile.hidePageLoadingMsg();
-                        $.mobile.changePage('map.html');
-                        createLayersListForMap();
+                        checkForLayers(layersDir, function(layers){
+                            $.mobile.changePage('map.html');
+                            createLayersListForMap(layers);
+                        });
                     });
                 }
             );
