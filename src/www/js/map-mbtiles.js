@@ -148,7 +148,11 @@ define(['utils', 'settings', 'config', 'map', 'file',
             var directoryReader = layersDir.createReader();
             directoryReader.readEntries(function(entries){
                 for(var i=0;i<entries.length;i++){
-                    layers.push(entries[i].name);
+                    //Android creates automatically a <dbname>.db-journal file when
+                    //it opens the db. We don't want to list it.
+                    if(entries[i].name.indexOf("db-journal") === -1){
+                        layers.push(entries[i].name);
+                    }
                 }
             });
         });
@@ -231,11 +235,12 @@ define(['utils', 'settings', 'config', 'map', 'file',
     $(document).on('vclick', '.show-layer', function(event){
         $.mobile.changePage('map.html');
         var layerName = $(this).text(), projections;
+        var dbname = file.getFilePathWithoutCDV(layersDir)+'/'+layerName.split(".")[0];
         if(utils.isMobileDevice()){
             if(!map.checkIfLayerExists(layerName)){
                 var tileLayer = new MapWithLocalMBTiles({
                     name: layerName,
-                    dbname: file.getFilePathWithoutCDV(layersDir)+'/'+layerName.split(".")[0],
+                    dbname: dbname,
                     url: utils.getMapServerUrl(),
                     layerName: layerName,
                     type: 'png',
@@ -245,8 +250,10 @@ define(['utils', 'settings', 'config', 'map', 'file',
                 });
                 map.addMapLayer(tileLayer);
                 projections = map.getProjections();
-                //TODO get the bbox from the database
-                map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]));
+                db.open(dbname);
+                db.getBBox(function(data){
+                    map.zoomToExtent(new OpenLayers.Bounds(map.tile2long(data.minx, data.z),map.tileTMS2lat(data.miny, data.z), map.tile2long(data.maxx, data.z),map.tileTMS2lat(data.maxy, data.z)).transform(projections[1], projections[0]));
+                });
             }
         }
         else{

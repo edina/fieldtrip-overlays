@@ -50,20 +50,31 @@ define([], function(){
 
     return {
         "open": initDB,
+        "getBBox": function(callback){
+            console.log("getBBox");
+
+            var resultsCallback = function(tx, rs) {
+                if(callback){
+                    callback(rs.rows.item(0));
+                }
+            };
+
+            localdb.transaction(function(tx){
+                tx.executeSql("select zoom_level as z, min(tile_column) as minx, max(tile_column) as maxx, min(tile_row) as miny, max(tile_row) as maxy from tiles where zoom_level = (select zoom_level from tiles order by zoom_level LIMIT 1)", [], resultsCallback, onError);// jshint ignore:line
+            });
+        },
         "getTiles": function(callback, scope, x, y, z, url ){// jshint ignore:line
 
             var resultsCallback = function(tx, rs) {
                 
                 if(callback) {
-                    console.log(rs.rows.length);
                     if( rs.rows.length > 0 ) {
-                        console.log("rows big 0");
 
                         var rowOutput  = rs.rows.item(0);
                         var tileData = rowOutput.tileData;// jshint ignore:line
                         callback.call(scope,"data:image/png;base64,"+tileData);
                     } else {
-                        callback.call(scope, "img/empty.png");
+                        callback.call(scope, "css/images/empty.png");
                     }
                 }
             };
