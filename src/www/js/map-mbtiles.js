@@ -63,6 +63,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
         pcapi.setUserId(login.getUser().id);
         utils.showPageLoadingMsg('Checking for Layers ');
         //fetch the metadata from mbtiles and add them to the listview
+        pcapi.setProvider(localStorage.getItem('cloud-provider'));
         pcapi.getItems('tiles', function(success, data){
             list.push('<li data-role="list-divider">On device</li>');
             if(layers.length>0){
@@ -171,8 +172,6 @@ define(['utils', 'settings', 'config', 'map', 'file',
         }
     }
     pcapi.init({"url": root, "version": config.pcapiversion});
-    //TODO getit externally
-    pcapi.setProvider('dropbox');
 
     $(document).on('pageshow', '#map-page', function(){
         createLayersListForMap(layers);
