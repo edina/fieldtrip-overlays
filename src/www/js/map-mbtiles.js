@@ -83,7 +83,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
             }
             $layersList.html(list.join(""));
             $layersList.listview("refresh");
-            $.mobile.hidePageLoadingMsg();
+            $.mobile.loading('hide');
         });
     };
 
@@ -101,21 +101,23 @@ define(['utils', 'settings', 'config', 'map', 'file',
             $layersList.listview("refresh");
         }
         else{
-            pcapi.setUserId(login.getUser().id);
-            pcapi.getItems('tiles', function(success, data){
-                list.push('<li data-role="list-divider">OnLine</li>');
-                if(success){
-                    $.each(data.metadata, $.proxy(function(i, item){
-                        var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
-                        list.push('<li><a href="javascript:void(0)" class="show-layer">'+fileName+'</a></li>');
-                    }, this));
-                    $layersList.html(list.join(""));
-                    $layersList.listview("refresh");
-                }
-                else{
-                    utils.inform('No layers to sync');
-                }
-            });
+            if(login.getUser() !== undefined){
+                pcapi.setUserId(login.getUser().id);
+                pcapi.getItems('tiles', function(success, data){
+                    list.push('<li data-role="list-divider">OnLine</li>');
+                    if(success){
+                        $.each(data.metadata, $.proxy(function(i, item){
+                            var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                            list.push('<li><a href="javascript:void(0)" class="show-layer">'+fileName+'</a></li>');
+                        }, this));
+                        $layersList.html(list.join(""));
+                        $layersList.listview("refresh");
+                    }
+                    else{
+                        utils.inform('No layers to sync');
+                    }
+                });
+            }
         }
     };
 
@@ -174,6 +176,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
     pcapi.init({"url": root, "version": config.pcapiversion});
 
     $(document).on('pageshow', '#map-page', function(){
+        $( "body>[data-role='panel']" ).panel();
         createLayersListForMap(layers);
     });
     $(document).on('pageshow', '#saved-layers-page', createLayersListForDownload);
@@ -230,7 +233,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
                     }
                     //TODO rename the file while downloading it
                     download.downloadItem(options, function(){
-                        $.mobile.hidePageLoadingMsg();
+                        $.mobile.loading('hide');
                         checkForLayers(layersDir, function(layers){
                             $.mobile.changePage('map.html');
                             createLayersListForMap(layers);
