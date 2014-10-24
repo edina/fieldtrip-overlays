@@ -38,7 +38,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
        function(utils, settings, config, map, file, download, pcapi, db){// jshint ignore:line
 
     var layersDir, root, layers = [];
-    var TILES_FOLDER = "features";
+    var TILES_FOLDER = "layers";
 
     /**
      * check for layers inside a dir
