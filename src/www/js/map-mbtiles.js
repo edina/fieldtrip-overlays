@@ -32,14 +32,19 @@ DAMAGE.
 "use strict";
 
 define(['utils', 'settings', 'config', 'map', 'file',
-        'plugins/sync/js/login',
         'plugins/sync/js/download',
         'plugins/sync/js/pcapi',
         './database'],
-       function(utils, settings, config, map, file, login, download, pcapi, db){// jshint ignore:line
+       function(utils, settings, config, map, file, download, pcapi, db){// jshint ignore:line
 
     var layersDir, root, layers = [];
+    var TILES_FOLDER = "features";
 
+    /**
+     * check for layers inside a dir
+     * @param dir the name of the directory to look in
+     * @callback
+     */
     var checkForLayers = function(dir, callback){
         var directoryReader = dir.createReader();
         directoryReader.readEntries(function(entries){
@@ -56,15 +61,18 @@ define(['utils', 'settings', 'config', 'map', 'file',
         });
     };
 
+    /**
+     * create layers list for downloading on download section
+     */
     var createLayersListForDownload = function(){
         var $layersList = $(".layers-list");
         var list = [];
 
-        pcapi.setUserId(login.getUser().id);
+        //pcapi.setUserId(login.getUser().id);
         utils.showPageLoadingMsg('Checking for Layers ');
         //fetch the metadata from mbtiles and add them to the listview
-        pcapi.setProvider(localStorage.getItem('cloud-provider'));
-        pcapi.getItems('tiles', function(success, data){
+        //pcapi.setProvider(localStorage.getItem('cloud-provider'));
+        pcapi.getFSItems(TILES_FOLDER, function(success, data){
             list.push('<li data-role="list-divider">On device</li>');
             if(layers.length>0){
                 for(var i=0; i<layers.length; i++){
@@ -87,6 +95,10 @@ define(['utils', 'settings', 'config', 'map', 'file',
         });
     };
 
+    /**
+     * create layers list on the panel on map page
+     * @param layers
+     */
     var createLayersListForMap = function(layers){
         var $layersList = $(".layers-list");
         var list = [];
@@ -101,9 +113,9 @@ define(['utils', 'settings', 'config', 'map', 'file',
             $layersList.listview("refresh");
         }
         else{
-            if(login.getUser() !== undefined){
-                pcapi.setUserId(login.getUser().id);
-                pcapi.getItems('tiles', function(success, data){
+            if(pcapi.getUser() !== undefined){
+                pcapi.setUserId(pcapi.getUser().id);
+                pcapi.getFSItems(TILES_FOLDER, function(success, data){
                     list.push('<li data-role="list-divider">OnLine</li>');
                     if(success){
                         $.each(data.metadata, $.proxy(function(i, item){
@@ -121,6 +133,9 @@ define(['utils', 'settings', 'config', 'map', 'file',
         }
     };
 
+    /**
+     * read data from the database
+     */
     var MapWithLocalMBTiles = OpenLayers.Class(OpenLayers.Layer.TMS, {
         initialize: function(options) {
             this.serviceVersion = options.serviceVersion;
@@ -162,7 +177,7 @@ define(['utils', 'settings', 'config', 'map', 'file',
             root = config.pcapiurl;
         }
         // create directory structure for layers
-        file.createDir('tiles', function(dir){
+        file.createDir(TILES_FOLDER, function(dir){
             layersDir = dir;
             checkForLayers(layersDir);
         });
@@ -173,14 +188,18 @@ define(['utils', 'settings', 'config', 'map', 'file',
             root += ':' + location.port;
         }
     }
+
+    //initialize pcapi
     pcapi.init({"url": root, "version": config.pcapiversion});
 
     $(document).on('pageshow', '#map-page', function(){
         $( "body>[data-role='panel']" ).panel();
         createLayersListForMap(layers);
     });
+
     $(document).on('pageshow', '#saved-layers-page', createLayersListForDownload);
 
+    //download layer event
     $(document).off('vclick', '.download-layer');
     $(document).on(
         'vclick',
@@ -223,14 +242,11 @@ define(['utils', 'settings', 'config', 'map', 'file',
                     $popup.popup('close');
 
                     utils.showPageLoadingMsg('Download Layer '+layer);
-                    var options;
+                    var options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir, "targetName": layer};
                     if(layer.indexOf("mbtiles")){
-                        var localFileName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
-                        options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir, "localFileName": localFileName};
+                        options.targetName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
                     }
-                    else{
-                        options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir};
-                    }
+
                     //TODO rename the file while downloading it
                     download.downloadItem(options, function(){
                         $.mobile.loading('hide');
@@ -247,8 +263,9 @@ define(['utils', 'settings', 'config', 'map', 'file',
     $(document).off('vclick', '.show-layer');
     $(document).on('vclick', '.show-layer', function(event){
         $.mobile.changePage('map.html');
-        var layerName = $(this).text(), projections;
-        var dbname = file.getFilePathWithoutCDV(layersDir)+'/'+layerName.split(".")[0];
+        var layerName = $(this).text();
+        var projections;
+        var dbname = file.getFilePathWithoutStart(layersDir)+'/'+layerName;
         if(utils.isMobileDevice()){
             if(!map.checkIfLayerExists(layerName)){
                 var tileLayer = new MapWithLocalMBTiles({
