@@ -176,10 +176,12 @@ define(['utils', 'settings', 'config', 'map', 'file',
         if(root === undefined){
             root = config.pcapiurl;
         }
-        // create directory structure for layers
-        file.createDir(TILES_FOLDER, function(dir){
-            layersDir = dir;
-            checkForLayers(layersDir);
+        file.createDir({
+            'name' : TILES_FOLDER,
+            'success': function(dir){
+                layersDir = dir;
+                checkForLayers(layersDir);
+            }
         });
     }
     else{
