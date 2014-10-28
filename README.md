@@ -1,4 +1,4 @@
-fieldtrip-map-mbtiles
-=====================
+fieldtrip-overlays
+==================
 
-Map Mbtiles is a Fieldtrip Open plugin for adding mbtiles to the map.
+Fieldtrip Overlays is a Fieldtrip Open plugin for overlays to to the map.
