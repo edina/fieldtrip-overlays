@@ -31,11 +31,11 @@ DAMAGE.
 
 "use strict";
 
-define(['utils', 'settings', 'config', 'map', 'file',
-        'plugins/sync/js/download',
-        'plugins/sync/js/pcapi',
-        './database'],
-       function(utils, settings, config, map, file, download, pcapi, db){// jshint ignore:line
+/**
+ * TODO
+ */
+define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download', 'plugins/sync/js/pcapi', './database'], function(// jshint ignore:line
+    utils, settings, config, map, file, download, pcapi, db){
 
     var layersDir, root, layers = [];
     var TILES_FOLDER = "layers";
@@ -300,5 +300,5 @@ define(['utils', 'settings', 'config', 'map', 'file',
         }
     });
 
-    $('head').prepend('<link rel="stylesheet" href="plugins/map-mbtiles/css/style.css" type="text/css" />');
+    $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
 });
