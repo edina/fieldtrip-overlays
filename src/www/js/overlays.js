@@ -244,7 +244,7 @@ define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download'
                     $popup.popup('close');
 
                     utils.showPageLoadingMsg('Download Layer '+layer);
-                    var options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir, "targetName": layer};
+                    var options = {"fileName": layer, "remoteDir": TILES_FOLDER, "localDir": layersDir, "targetName": layer};
                     if(layer.indexOf("mbtiles")){
                         options.targetName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
                     }
