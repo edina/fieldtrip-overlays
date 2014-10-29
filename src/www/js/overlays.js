@@ -258,7 +258,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// 
                         targetName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
                     }
 
-                    var itemUrl = pcapi.buildFSUrl('tiles', layer);
+                    var itemUrl = pcapi.buildFSUrl(TILES_FOLDER, layer);
                     var target = file.getFilePath(layersDir) + '/' + targetName;
 
                     file.ftDownload(
