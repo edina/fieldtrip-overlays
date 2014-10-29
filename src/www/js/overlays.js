@@ -31,14 +31,23 @@ DAMAGE.
 
 "use strict";
 
+/* global pcapi */
+
+// TODO - currently no support for requirejs in pcapi
+require.config({
+    paths: {
+        "pcapi": "../plugins/overlays/js/ext/pcapi",
+    }
+});
+
 /**
  * TODO
  */
-define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download', 'plugins/sync/js/pcapi', './database'], function(// jshint ignore:line
-    utils, settings, config, map, file, download, pcapi, db){
+define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// jshint ignore:line
+    map, file, utils, settings, _pcapi, db){
 
     var layersDir, root, layers = [];
-    var TILES_FOLDER = "layers";
+    var TILES_FOLDER = 'layers';
 
     /**
      * check for layers inside a dir
@@ -68,10 +77,9 @@ define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download'
         var $layersList = $(".layers-list");
         var list = [];
 
-        //pcapi.setUserId(login.getUser().id);
         utils.showPageLoadingMsg('Checking for Layers ');
+
         //fetch the metadata from mbtiles and add them to the listview
-        //pcapi.setProvider(localStorage.getItem('cloud-provider'));
         pcapi.getFSItems(TILES_FOLDER, function(success, data){
             list.push('<li data-role="list-divider">On device</li>');
             if(layers.length>0){
@@ -174,7 +182,7 @@ define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download'
         // check settings first for defined pcapi root url
         root = settings.get("pcapi-url");
         if(root === undefined){
-            root = config.pcapiurl;
+            root = utils.getPCAPIURL();
         }
         file.createDir({
             'name' : TILES_FOLDER,
@@ -192,7 +200,7 @@ define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download'
     }
 
     //initialize pcapi
-    pcapi.init({"url": root, "version": config.pcapiversion});
+    pcapi.init({"url": root, "version": utils.getPCAPIVersion()});
 
     $(document).on('pageshow', '#map-page', function(){
         $( "body>[data-role='panel']" ).panel();
@@ -210,7 +218,7 @@ define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download'
             var layer = $(this).text();
             var $popup = $('#saved-layers-download-popup');
             var text;
-            if($.inArray(layer, layers)){
+            if($.inArray(layer, layers) !== -1){
                 text = "The layer "+layer+" already exists. Do you still want to download it?";
             }
             else{
@@ -244,19 +252,25 @@ define(['utils', 'settings', 'config', 'map', 'file', 'plugins/sync/js/download'
                     $popup.popup('close');
 
                     utils.showPageLoadingMsg('Download Layer '+layer);
-                    var options = {"fileName": layer, "remoteDir": "tiles", "localDir": layersDir, "targetName": layer};
+
+                    var targetName = layer;
                     if(layer.indexOf("mbtiles")){
-                        options.targetName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
+                        targetName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
                     }
 
-                    //TODO rename the file while downloading it
-                    download.downloadItem(options, function(){
-                        $.mobile.loading('hide');
-                        checkForLayers(layersDir, function(layers){
-                            $.mobile.changePage('map.html');
-                            createLayersListForMap(layers);
-                        });
-                    });
+                    var itemUrl = pcapi.buildFSUrl('tiles', layer);
+                    var target = file.getFilePath(layersDir) + '/' + targetName;
+
+                    file.ftDownload(
+                        itemUrl,
+                        target,
+                        function(){
+                            $.mobile.loading('hide');
+                            checkForLayers(layersDir, function(layers){
+                                $.mobile.changePage('map.html');
+                            });
+                        }
+                    );
                 }
             );
         }

@@ -7,8 +7,11 @@
         "Murray King <murray.king@ed.ac.uk>",
         "Panos Terzis <p.terzis@ed.ac.uk>"
     ],
-    "description": "Map Mbtiles is a Fieldtrip Open plugin for adding mbtiles to the map.",
+    "description": "Overlays is a Fieldtrip Open plugin for adding overlays to the map.",
     "main": "",
+    "dependencies": {
+        "pcapi": "0.0.1"
+    },
     "keywords": [
         "fieldtrip-open",
         "mbtiles-maps"
