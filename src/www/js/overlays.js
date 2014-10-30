@@ -43,8 +43,8 @@ require.config({
 /**
  * TODO
  */
-define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// jshint ignore:line
-    map, file, utils, settings, _pcapi, db){
+define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// jshint ignore:line
+    map, file, utils, settings, _pcapi, mbtiles){
 
     var layersDir, root, layers = [];
     var TILES_FOLDER = 'layers';
@@ -67,39 +67,6 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// 
             if(callback){
                 callback(layers);
             }
-        });
-    };
-
-    /**
-     * create layers list for downloading on download section
-     */
-    var createLayersListForDownload = function(){
-        var $layersList = $(".layers-list");
-        var list = [];
-
-        utils.showPageLoadingMsg('Checking for Layers ');
-
-        //fetch the metadata from mbtiles and add them to the listview
-        pcapi.getFSItems(TILES_FOLDER, function(success, data){
-            list.push('<li data-role="list-divider">On device</li>');
-            if(layers.length>0){
-                for(var i=0; i<layers.length; i++){
-                    list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
-                }
-            }
-            list.push('<li data-role="list-divider">On cloud</li>');
-            if(success){
-                $.each(data.metadata, $.proxy(function(i, item){
-                    var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
-                    list.push('<li><a href="javascript:void(0)" class="download-layer">'+fileName+'</a></li>');
-                }, this));
-            }
-            else{
-                utils.inform('No layers to sync');
-            }
-            $layersList.html(list.join(""));
-            $layersList.listview("refresh");
-            $.mobile.loading('hide');
         });
     };
 
@@ -142,41 +109,112 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// 
     };
 
     /**
-     * read data from the database
+     * Download layer to disk.
      */
-    var MapWithLocalMBTiles = OpenLayers.Class(OpenLayers.Layer.TMS, {
-        initialize: function(options) {
-            this.serviceVersion = options.serviceVersion;
-            this.layername = options.layerName;
-            this.type = options.type;
-            this.dbname = options.dbname;
-            this.isBaseLayer = options.isBaseLayer;
-            this.opacity = options.opacity;
-            this.visibility = true;
+    var downloadLayer = function(){
+        var layer = $(this).text();
+        var $popup = $('#saved-layers-download-popup');
+        var text;
+        if($.inArray(layer, layers) !== -1){
+            text = "The layer "+layer+" already exists. Do you still want to download it?";
+        }
+        else{
+            text = "You are going to download layer "+layer;
+        }
+        $popup.empty();
+        /*jshint multistr: true */
+        $popup.append(
+            '<div data-theme="d" class="ui-corner-all ui-content">\
+               <p>'+text+'</p>\
+               <a href="#"\
+                  data-theme="a"\
+                  data-role="button"\
+                  data-inline="true"\
+                  data-rel="back">Cancel</a>\
+               <a id="#download-layer-confirm"\
+                  data-theme="a"\
+                  href="#"\
+                  data-role="button"\
+                  data-inline="true">Continue</a>\
+             </div>').trigger('create');
+        $popup.popup('open');
 
-            // this boolean determines which overriden method is called getURLasync
-            // or getURL. Using getURLasync was causing the application to freeze,
-            // often getting a ANR
-            //this.async = typeof(webdb) !== 'undefined';
-            this.async = true;
-            if(this.async === true){
-                db.open(this.dbname);
+        //$(document).off('vmousedown', '.download-layer-confirm');
+        //$('#saved-record-delete-confirm').click($.proxy(function(event){
+        $('#download-layer-confirm').click(function(event){
+            //$(document).on(
+            //'vmousedown',
+            //'.download-layer-confirm',
+            //function(event){
+            event.preventDefault();
+            $popup.popup('close');
+
+            utils.showPageLoadingMsg('Download Layer '+layer);
+
+            var targetName = layer;
+            if(layer.indexOf("mbtiles")){
+                targetName = layer.substring(layer.lastIndexOf('/') + 1,
+                                             layer.lastIndexOf('.')) + ".db";
             }
 
-            OpenLayers.Layer.TMS.prototype.initialize.apply(
-                this,
-                [options.name, options.url, {}]
+            var itemUrl = pcapi.buildFSUrl(TILES_FOLDER, layer);
+            var target = file.getFilePath(layersDir) + '/' + targetName;
+
+            file.ftDownload(
+                itemUrl,
+                target,
+                function(){
+                    $.mobile.loading('hide');
+                    checkForLayers(layersDir, function(layers){
+                        $.mobile.changePage('map.html');
+                    });
+                }
             );
-        },
-        getURLasync: function(bounds, callback, scope) {
-            var url = OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
-            var data = url.match(/\/(\d+)/g).join("").split("/");
-            db.getTiles(callback, scope, data[2], data[3], data[1], url);
-        },
-        getURL: function(bounds) {
-            return OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
-        },
-    });
+        });
+    };
+
+    /**
+     * create layers list for downloading on download section
+     */
+    var savedLayersPage = function(){
+        var $layersList = $(".layers-list");
+        var list = [];
+
+        utils.showPageLoadingMsg('Checking for Layers ');
+
+        //fetch the metadata from mbtiles and add them to the listview
+        pcapi.getFSItems(TILES_FOLDER, function(success, data){
+            list.push('<li data-role="list-divider">On device</li>');
+            if(layers.length>0){
+                for(var i=0; i<layers.length; i++){
+                    list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+                }
+            }
+            list.push('<li data-role="list-divider">On cloud</li>');
+            if(success){
+                $.each(data.metadata, $.proxy(function(i, item){
+                    var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                    list.push('<li><a href="javascript:void(0)" class="download-layer">'+fileName+'</a></li>');
+                }, this));
+            }
+            else{
+                utils.inform('No layers to sync');
+            }
+            $layersList.html(list.join(""));
+            $layersList.listview("refresh");
+            $.mobile.loading('hide');
+        });
+    };
+
+    /**
+     * Display overlay.
+     */
+    var showlayer = function(){
+        var layerName = $(this).text();
+        if(!map.checkIfLayerExists(layerName)){
+            mbtiles.showMbTilesLayer(layerName);
+        }
+    };
 
     if(utils.isMobileDevice()){
         // check settings first for defined pcapi root url
@@ -188,6 +226,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// 
             'name' : TILES_FOLDER,
             'success': function(dir){
                 layersDir = dir;
+                mbtiles.init(layersDir);
                 checkForLayers(layersDir);
             }
         });
@@ -207,112 +246,13 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './database'], function(// 
         createLayersListForMap(layers);
     });
 
-    $(document).on('pageshow', '#saved-layers-page', createLayersListForDownload);
+    $(document).on('pageshow', '#saved-layers-page', savedLayersPage);
 
     //download layer event
-    $(document).off('vclick', '.download-layer');
-    $(document).on(
-        'vclick',
-        '.download-layer',
-        function(){
-            var layer = $(this).text();
-            var $popup = $('#saved-layers-download-popup');
-            var text;
-            if($.inArray(layer, layers) !== -1){
-                text = "The layer "+layer+" already exists. Do you still want to download it?";
-            }
-            else{
-                text = "You are going to download layer "+layer;
-            }
-            $popup.empty();
-            /*jshint multistr: true */
-            $popup.append(
-                '<div data-theme="d" class="ui-corner-all ui-content">\
-                <p>'+text+'\
-                </p>\
-                <a href="#"\
-                  data-theme="a"\
-                  data-role="button"\
-                  data-inline="true"\
-                  data-rel="back">Cancel</a>\
-                <a class="download-layer-confirm"\
-                  data-theme="a"\
-                  href="#"\
-                  data-role="button"\
-                  data-inline="true">Continue</a>\
-                </div>').trigger('create');
-            $popup.popup('open');
+    $(document).on('vclick', '.download-layer', downloadLayer);
 
-            $(document).off('vmousedown', '.download-layer-confirm');
-            $(document).on(
-                'vmousedown',
-                '.download-layer-confirm',
-                function(event){
-                    event.preventDefault();
-                    $popup.popup('close');
-
-                    utils.showPageLoadingMsg('Download Layer '+layer);
-
-                    var targetName = layer;
-                    if(layer.indexOf("mbtiles")){
-                        targetName = layer.substring(layer.lastIndexOf('/')+1, layer.lastIndexOf('.'))+".db";
-                    }
-
-                    var itemUrl = pcapi.buildFSUrl(TILES_FOLDER, layer);
-                    var target = file.getFilePath(layersDir) + '/' + targetName;
-
-                    file.ftDownload(
-                        itemUrl,
-                        target,
-                        function(){
-                            $.mobile.loading('hide');
-                            checkForLayers(layersDir, function(layers){
-                                $.mobile.changePage('map.html');
-                            });
-                        }
-                    );
-                }
-            );
-        }
-    );
-
-    $(document).off('vclick', '.show-layer');
-    $(document).on('vclick', '.show-layer', function(event){
-        $.mobile.changePage('map.html');
-        var layerName = $(this).text();
-        var projections;
-        var dbname = file.getFilePathWithoutStart(layersDir)+'/'+layerName;
-        if(utils.isMobileDevice()){
-            if(!map.checkIfLayerExists(layerName)){
-                var tileLayer = new MapWithLocalMBTiles({
-                    name: layerName,
-                    dbname: dbname,
-                    url: utils.getMapServerUrl(),
-                    layerName: layerName,
-                    type: 'png',
-                    isBaseLayer: false,
-                    opacity: 0.5,
-                    serviceVersion: ''
-                });
-                map.addMapLayer(tileLayer);
-                projections = map.getProjections();
-                db.open(dbname);
-                db.getBBox(function(data){
-                    map.zoomToExtent(new OpenLayers.Bounds(map.tile2long(data.minx, data.z),map.tileTMS2lat(data.miny, data.z), map.tile2long(data.maxx, data.z),map.tileTMS2lat(data.maxy, data.z)).transform(projections[1], projections[0]));
-                });
-            }
-        }
-        else{
-            //TODO get rid of it or get the url externally
-            map.addRemoteMBTilesLayer({
-                "name": layerName,
-                "url": "<url>",
-                "db": layerName
-            });
-            projections = map.getProjections();
-            map.zoomToExtent(new OpenLayers.Bounds(-4.2709,52.3857,-3.5184,52.8094).transform(projections[1], projections[0]));
-        }
-    });
+    // click on layer on map side panel
+    $(document).on('vclick', '.show-layer', showlayer);
 
     $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
 });

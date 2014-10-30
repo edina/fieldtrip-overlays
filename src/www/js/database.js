@@ -31,16 +31,15 @@ DAMAGE.
 
 "use strict";
 
-define([], function(){
+define(function(){
     var localdb;
-    
+
     var initDB = function(dbname){
-        console.log("init db");
         if(!window.sqlitePlugin){
-            console.log("The is something wrong with slqite cordova plugin");
+            console.debug("The is something wrong with slqite cordova plugin");
         }else{
             localdb = window.sqlitePlugin.openDatabase({name: dbname});
-            console.log("success opening db: "+dbname);
+            console.debug("success opening db: "+dbname);
         }
     };
 
@@ -49,10 +48,15 @@ define([], function(){
     };
 
     return {
-        "open": initDB,
-        "getBBox": function(callback){
-            console.log("getBBox");
+        /**
+         * TODO
+         */
+        open: initDB,
 
+        /**
+         * TODO
+         */
+        getBBox: function(callback){
             var resultsCallback = function(tx, rs) {
                 if(callback){
                     callback(rs.rows.item(0));
@@ -63,10 +67,14 @@ define([], function(){
                 tx.executeSql("select zoom_level as z, min(tile_column) as minx, max(tile_column) as maxx, min(tile_row) as miny, max(tile_row) as maxy from tiles where zoom_level = (select zoom_level from tiles order by zoom_level LIMIT 1)", [], resultsCallback, onError);// jshint ignore:line
             });
         },
-        "getTiles": function(callback, scope, x, y, z, url ){// jshint ignore:line
+
+        /**
+         * TODO
+         */
+        getTiles: function(callback, scope, x, y, z, url ){// jshint ignore:line
 
             var resultsCallback = function(tx, rs) {
-                
+
                 if(callback) {
                     if( rs.rows.length > 0 ) {
 
@@ -74,11 +82,11 @@ define([], function(){
                         var tileData = rowOutput.tileData;// jshint ignore:line
                         callback.call(scope,"data:image/png;base64,"+tileData);
                     } else {
-                        callback.call(scope, "css/images/empty.png");
+                        //callback.call(scope, "css/images/empty.png");
                     }
                 }
             };
-    
+
             localdb.transaction(function(tx) {
                 tx.executeSql("SELECT tile_data as tileData FROM tiles where zoom_level=? AND tile_column=? AND tile_row=?", [z,x,y], resultsCallback, onError);// jshint ignore:line
             });
