@@ -2,7 +2,7 @@
     "header": {
         "buttons" : {
             "user-layers":{
-                "href": "#layers-panel",
+                "href": "#map-page-layers-panel",
                 "class": "user-layers",
                 "data-role": "button",
                 "data-inline": "true",
@@ -15,7 +15,7 @@
         "popup2":{
             "template": "map-layers.html",
             "data": {
-                
+
             }
         }
     }

@@ -131,7 +131,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
                   data-role="button"\
                   data-inline="true"\
                   data-rel="back">Cancel</a>\
-               <a id="#download-layer-confirm"\
+               <a id="download-layer-confirm"\
                   data-theme="a"\
                   href="#"\
                   data-role="button"\
@@ -139,26 +139,20 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
              </div>').trigger('create');
         $popup.popup('open');
 
-        //$(document).off('vmousedown', '.download-layer-confirm');
-        //$('#saved-record-delete-confirm').click($.proxy(function(event){
         $('#download-layer-confirm').click(function(event){
-            //$(document).on(
-            //'vmousedown',
-            //'.download-layer-confirm',
-            //function(event){
             event.preventDefault();
             $popup.popup('close');
 
             utils.showPageLoadingMsg('Download Layer '+layer);
 
             var targetName = layer;
-            if(layer.indexOf("mbtiles")){
+            if(layer.endsWith("mbtiles")){
                 targetName = layer.substring(layer.lastIndexOf('/') + 1,
                                              layer.lastIndexOf('.')) + ".db";
             }
 
             var itemUrl = pcapi.buildFSUrl(TILES_FOLDER, layer);
-            var target = file.getFilePath(layersDir) + '/' + targetName;
+            var target = file.appendFile(layersDir, targetName);
 
             file.ftDownload(
                 itemUrl,
@@ -212,7 +206,23 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
     var showlayer = function(){
         var layerName = $(this).text();
         if(!map.checkIfLayerExists(layerName)){
-            mbtiles.showMbTilesLayer(layerName);
+            switch(layerName.substr(layerName.length - 3)){
+            case '.db':
+                mbtiles.showMbTilesLayer(layerName);
+                break;
+            case 'kml':
+                var kml = file.appendFile(layersDir, layerName);
+                var layer = map.addKMLLayer({
+                    'id': layerName,
+                    'url': kml
+                });
+                $('#map-page-layers-panel').panel('close');
+                map.zoomToExtent(layer.getExtent());
+
+                break;
+            default:
+                utils.inform("Don't know how to display " + layerName);
+            }
         }
     };
 
