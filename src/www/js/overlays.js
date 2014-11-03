@@ -55,6 +55,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
      * @callback
      */
     var checkForLayers = function(dir, callback){
+        layers = [];
         var directoryReader = dir.createReader();
         directoryReader.readEntries(function(entries){
             for(var i=0;i<entries.length;i++){
@@ -71,17 +72,26 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
     };
 
     /**
-     * create layers list on the panel on map page
-     * @param layers
+     * Create layers list on the panel on map page.
      */
-    var createLayersListForMap = function(layers){
-        var $layersList = $(".layers-list");
+    var createLayersListForMap = function(){
+        var $layersList = $("#map-page-layers-list");
+        $layersList.empty();
         var list = [];
         if(utils.isMobileDevice()){
             list.push('<li data-role="list-divider">On device</li>');
             if(layers.length>0){
                 for(var i=0; i<layers.length; i++){
-                    list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+                    var layer = layers[i];
+                    var li;
+                    if(map.layerExists(layer)){
+                        li = '<li>' + layer + '</li>';
+                    }
+                    else{
+                        li = '<li><a href="javascript:void(0)" class="show-layer">' +
+                            layer + '</a></li>';
+                    }
+                    list.push(li);
                 }
             }
             $layersList.html(list.join(""));
@@ -203,9 +213,9 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
     /**
      * Display overlay.
      */
-    var showlayer = function(){
+    var showLayer = function(){
         var layerName = $(this).text();
-        if(!map.checkIfLayerExists(layerName)){
+        if(!map.layerExists(layerName)){
             switch(layerName.substr(layerName.length - 3)){
             case '.db':
                 mbtiles.showMbTilesLayer(layerName);
@@ -216,8 +226,13 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
                     'id': layerName,
                     'url': kml
                 });
+
+                layer.events.register("loadend", this, function(){
+                    map.zoomToExtent(layer.getDataExtent());
+                });
+
                 $('#map-page-layers-panel').panel('close');
-                map.zoomToExtent(layer.getExtent());
+                createLayersListForMap();
 
                 break;
             default:
@@ -253,7 +268,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
 
     $(document).on('pageshow', '#map-page', function(){
         $( "body>[data-role='panel']" ).panel();
-        createLayersListForMap(layers);
+        createLayersListForMap();
     });
 
     $(document).on('pageshow', '#saved-layers-page', savedLayersPage);
@@ -262,7 +277,8 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
     $(document).on('vclick', '.download-layer', downloadLayer);
 
     // click on layer on map side panel
-    $(document).on('vclick', '.show-layer', showlayer);
+    $(document).on('vclick', '.show-layer', showLayer);
 
     $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
+
 });
