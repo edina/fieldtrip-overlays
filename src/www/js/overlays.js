@@ -43,8 +43,8 @@ require.config({
 /**
  * TODO
  */
-define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// jshint ignore:line
-    map, file, utils, settings, _pcapi, mbtiles){
+define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], function(// jshint ignore:line
+    map, file, utils, settings, _pcapi, records, mbtiles){
 
     var layersDir, root, layers = [];
     var TILES_FOLDER = 'layers';
@@ -247,14 +247,13 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', './mbtiles'], function(// j
         if(root === undefined){
             root = utils.getPCAPIURL();
         }
-        file.createDir({
-            'name' : TILES_FOLDER,
-            'success': function(dir){
-                layersDir = dir;
-                mbtiles.init(layersDir);
-                checkForLayers(layersDir);
-            }
+
+        records.addAssetType(TILES_FOLDER, function(dir) {
+            layersDir = dir;
+            mbtiles.init(layersDir);
+            checkForLayers(layersDir);
         });
+
     }
     else{
         root = 'http://' + location.hostname;
