@@ -61,7 +61,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
             for(var i=0;i<entries.length;i++){
                 //Android creates automatically a <dbname>.db-journal file when
                 //it opens the db. We don't want to list it.
-                if(entries[i].name.indexOf("db-journal") === -1){
+                if(entries[i].name.indexOf("-journal") === -1){
                     layers.push(entries[i].name);
                 }
             }
@@ -215,9 +215,12 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
      */
     var showLayer = function(){
         var layerName = $(this).text();
+        var layerType;
         if(!map.layerExists(layerName)){
-            switch(layerName.substr(layerName.length - 3)){
-            case '.db':
+            layerType = layerName.match(/\.(.*)$/)[1];
+            switch(layerType){
+            case 'db':
+            case 'mbtiles':
                 mbtiles.showMbTilesLayer(layerName);
                 break;
             case 'kml':
