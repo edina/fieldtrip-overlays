@@ -97,7 +97,7 @@ return{
             layerName: layerName,
             type: 'png',
             isBaseLayer: false,
-            opacity: 0.5,
+            opacity: 1,
             serviceVersion: ''
         });
         map.addMapLayer(tileLayer);
