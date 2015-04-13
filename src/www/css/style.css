@@ -3,3 +3,34 @@
     background-size: 26px 26px;
     background-position: 5px 5px;
 }
+
+
+ul.layers-list > li label{
+    position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 75px;
+
+}
+
+ul.layers-list > li .ui-flipswitch{
+    position: absolute;
+    right: 0.8em;
+    top: 0;
+    margin-top: 8px;
+}
+
+ul#map-page-layers-list > li label{
+    position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 75px;
+
+}
+
+ul#map-page-layers-list > li .ui-flipswitch{
+    position: absolute;
+    right: 0.8em;
+    top: 0;
+    margin-top: 8px;
+}

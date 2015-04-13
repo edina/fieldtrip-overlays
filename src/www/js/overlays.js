@@ -47,7 +47,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
     map, file, utils, settings, _pcapi, records, mbtiles){
 
     var layersDir, root, layers = [];
-    var TILES_FOLDER = 'layers';
+    var TILES_FOLDER = 'features';
 
     /**
      * check for layers inside a dir
@@ -79,40 +79,36 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
         $layersList.empty();
         var list = [];
         if(utils.isMobileDevice()){
-            list.push('<li data-role="list-divider">On device</li>');
+            list.push('<li data-role="list-divider">Layers</li>');
             if(layers.length>0){
                 for(var i=0; i<layers.length; i++){
                     var layer = layers[i];
-                    var li;
+                    var checked = '';
                     if(map.layerExists(layer)){
-                        li = '<li>' + layer + '</li>';
+                        checked = 'checked';
                     }
-                    else{
-                        li = '<li><a href="javascript:void(0)" class="show-layer">' +
-                            layer + '</a></li>';
-                    }
-                    list.push(li);
+                    list.push('<li><label for="flip-checkbox-'+ i +'">'+layer+'</label>\
+                          <input data-role="flipswitch"\
+                                name="flip-checkbox-'+ i +'"\
+                                id="flip-checkbox-'+ i +'"\
+                                class="show-layer" type="checkbox" '+ checked +'></li>');
                 }
             }
             $layersList.html(list.join(""));
+            $('input[data-role="flipswitch"]', "#map-page-layers-list").flipswitch();
             $layersList.listview("refresh");
         }
         else{
             if(pcapi.getUser() !== undefined){
                 pcapi.setUserId(pcapi.getUser().id);
-                pcapi.getFSItems(TILES_FOLDER, function(success, data){
+                pcapi.getFSItems(TILES_FOLDER).then(function(data){
                     list.push('<li data-role="list-divider">OnLine</li>');
-                    if(success){
-                        $.each(data.metadata, $.proxy(function(i, item){
-                            var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
-                            list.push('<li><a href="javascript:void(0)" class="show-layer">'+fileName+'</a></li>');
-                        }, this));
-                        $layersList.html(list.join(""));
-                        $layersList.listview("refresh");
-                    }
-                    else{
-                        utils.inform('No layers to sync');
-                    }
+                    $.each(data.metadata, $.proxy(function(i, item){
+                        var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                        list.push('<li><a href="javascript:void(0)" class="show-layer">'+fileName+'</a></li>');
+                    }, this));
+                    $layersList.html(list.join(""));
+                    $layersList.listview("refresh");
                 });
             }
         }
@@ -121,49 +117,16 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
     /**
      * Download layer to disk.
      */
-    var downloadLayer = function(){
-        var layer = $(this).text();
-        var $popup = $('#saved-layers-download-popup');
-        var text;
-        if($.inArray(layer, layers) !== -1){
-            text = "The layer "+layer+" already exists. Do you still want to download it?";
-        }
-        else{
-            text = "You are going to download layer "+layer;
-        }
-        $popup.empty();
-        /*jshint multistr: true */
-        $popup.append(
-            '<div data-theme="d" class="ui-corner-all ui-content">\
-               <p>'+text+'</p>\
-               <a href="#"\
-                  data-theme="a"\
-                  data-role="button"\
-                  data-inline="true"\
-                  data-rel="back">Cancel</a>\
-               <a id="download-layer-confirm"\
-                  data-theme="a"\
-                  href="#"\
-                  data-role="button"\
-                  data-inline="true">Continue</a>\
-             </div>').trigger('create');
-        $popup.popup('open');
+    var downloadLayer = function(event){
+        var $target = $(event.target);
+        var layer = $("label[for='"+$target.attr('id')+"']").text();
 
-        $('#download-layer-confirm').click(function(event){
-            event.preventDefault();
-            $popup.popup('close');
+        var itemUrl = pcapi.buildFSUserUrl(utils.getAnonymousUserId(), TILES_FOLDER, layer);
+        var target = file.appendFile(layersDir, layer);
 
+        // Download or delete the editor from the device
+        if($target.prop('checked')){
             utils.showPageLoadingMsg('Download Layer '+layer);
-
-            var targetName = layer;
-            if(layer.endsWith("mbtiles")){
-                targetName = layer.substring(layer.lastIndexOf('/') + 1,
-                                             layer.lastIndexOf('.')) + ".db";
-            }
-
-            var itemUrl = pcapi.buildFSUrl(TILES_FOLDER, layer);
-            var target = file.appendFile(layersDir, targetName);
-
             file.ftDownload(
                 itemUrl,
                 target,
@@ -174,7 +137,14 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
                     });
                 }
             );
-        });
+        }else{
+            utils.showPageLoadingMsg('Delete Layer '+layer);
+            file.deleteFile(layer, layersDir, function(){
+                layers.splice($.inArray(layer, layers), 1);
+                $.mobile.loading('hide');
+            });
+
+        }
     };
 
     /**
@@ -187,24 +157,22 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
         utils.showPageLoadingMsg('Checking for Layers ');
 
         //fetch the metadata from mbtiles and add them to the listview
-        pcapi.getFSItems(TILES_FOLDER, function(success, data){
-            list.push('<li data-role="list-divider">On device</li>');
-            if(layers.length>0){
-                for(var i=0; i<layers.length; i++){
-                    list.push('<li><a href="javascript:void(0)" class="show-layer">'+layers[i]+'</a></li>');
+        pcapi.getFSItems(TILES_FOLDER, utils.getAnonymousUserId()).then(function(data){
+
+            $.each(data.metadata, $.proxy(function(i, item){
+                var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                var checked = '';
+                if($.inArray(fileName, layers) > -1){
+                    checked = 'checked';
                 }
-            }
-            list.push('<li data-role="list-divider">On cloud</li>');
-            if(success){
-                $.each(data.metadata, $.proxy(function(i, item){
-                    var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
-                    list.push('<li><a href="javascript:void(0)" class="download-layer">'+fileName+'</a></li>');
-                }, this));
-            }
-            else{
-                utils.inform('No layers to sync');
-            }
+                list.push('<li><label for="flip-checkbox-'+ i +'">'+fileName+'</label>\
+                          <input data-role="flipswitch"\
+                                name="flip-checkbox-'+ i +'"\
+                                id="flip-checkbox-'+ i +'"\
+                                class="download-layer" type="checkbox" '+ checked +'></li>');
+            }, this));
             $layersList.html(list.join(""));
+            $('input[data-role="flipswitch"]', ".layers-list").flipswitch();
             $layersList.listview("refresh");
             $.mobile.loading('hide');
         });
@@ -213,34 +181,44 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
     /**
      * Display overlay.
      */
-    var showLayer = function(){
-        var layerName = $(this).text();
+    var showLayer = function(event){
+        var $target = $(event.target);
+        var layerName = $("label[for='"+$target.attr('id')+"']").text();
+
         var layerType;
-        if(!map.layerExists(layerName)){
-            layerType = layerName.match(/\.(.*)$/)[1];
-            switch(layerType){
-            case 'db':
-            case 'mbtiles':
-                mbtiles.showMbTilesLayer(layerName);
-                break;
-            case 'kml':
-                var kml = file.appendFile(layersDir, layerName);
-                var layer = map.addKMLLayer({
-                    'id': layerName,
-                    'url': kml
-                });
+        if($target.prop('checked')){
+            if(!map.layerExists(layerName)){
+                layerType = layerName.match(/\.(.*)$/)[1];
+                switch(layerType){
+                case 'db':
+                case 'mbtiles':
+                    mbtiles.showMbTilesLayer(layerName);
+                    break;
+                case 'kml':
+                    var kml = file.appendFile(layersDir, layerName);
+                    var layer = map.addKMLLayer({
+                        'id': layerName,
+                        'url': kml
+                    });
 
-                layer.events.register("loadend", this, function(){
-                    map.zoomToExtent(layer.getDataExtent());
-                });
+                    layer.events.register("loadend", this, function(){
+                        map.zoomToExtent(layer.getDataExtent());
+                    });
 
-                $('#map-page-layers-panel').panel('close');
-                createLayersListForMap();
+                    $('#map-page-layers-panel').panel('close');
+                    createLayersListForMap();
 
-                break;
-            default:
-                utils.inform("Don't know how to display " + layerName);
+                    break;
+                default:
+                    utils.inform("Don't know how to display " + layerName);
+                }
             }
+            else{
+                map.showLayerByName(layerName);
+            }
+        }
+        else{
+            map.hideLayerByName(layerName);
         }
     };
 
@@ -251,10 +229,14 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
             root = utils.getPCAPIURL();
         }
 
-        records.addAssetType(TILES_FOLDER, function(dir) {
-            layersDir = dir;
-            mbtiles.init(layersDir);
-            checkForLayers(layersDir);
+        file.createDir({
+            'name': TILES_FOLDER,
+            'success': function(dir){
+                layersDir = dir;
+                mbtiles.init(layersDir);
+                checkForLayers(layersDir);
+
+            }
         });
 
     }
@@ -267,6 +249,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
 
     //initialize pcapi
     pcapi.init({"url": root, "version": utils.getPCAPIVersion()});
+    pcapi.setUserId(utils.getAnonymousUserId());
 
     $(document).on('pageshow', '#map-page', function(){
         $( "body>[data-role='panel']" ).panel();
@@ -276,10 +259,11 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
     $(document).on('pageshow', '#saved-layers-page', savedLayersPage);
 
     //download layer event
-    $(document).on('vclick', '.download-layer', downloadLayer);
+    //$(document).on('vclick', '.download-layer', downloadLayer);
+    $(document).on('change', '.download-layer', downloadLayer);
 
     // click on layer on map side panel
-    $(document).on('vclick', '.show-layer', showLayer);
+    $(document).on('change', '.show-layer', showLayer);
 
     $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
 
