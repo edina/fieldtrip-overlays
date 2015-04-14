@@ -1,6 +1,6 @@
 {
     "name": "fieldtrip-map-mbtiles",
-    "version": "0.0.7",
+    "version": "0.0.2",
     "homepage": "https://github.com/edina/fieldtrip-map-mbtiles",
     "authors": [
         "George Hamilton <george.hamilton@ed.ac.uk>",
@@ -10,7 +10,7 @@
     "description": "Overlays is a Fieldtrip Open plugin for adding overlays to the map.",
     "main": "",
     "dependencies": {
-        "pcapi": "0.0.2"
+        "pcapi": "0.0.7"
     },
     "keywords": [
         "fieldtrip-open",
