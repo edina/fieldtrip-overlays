@@ -25,8 +25,7 @@
   ],
   "license": "BSD",
   "dependencies": {
-    "jquery": "^1.11.2",
-    "cobweb-los-plugin": "0.0.1"
+    "jquery": "^1.11.2"
   },
   "devDependencies": {
     "jshint": "2.5.3",
