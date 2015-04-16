@@ -1,0 +1,39 @@
+{
+  "name": "fieldtrip-overlays",
+  "version": "0.1.0",
+  "description": "A fieldtrip plugin for adding layers to a map",
+  "main": "src/www/js/overlays.js",
+  "scripts": {
+    "lint": "node_modules/jshint/bin/jshint src/www/js/**.js",
+    "release": "npm run lint && node_modules/release-it/bin/release.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edina/fieldtrip-overlays.git"
+  },
+  "keywords": [
+    "fieldtrip",
+    "cobweb",
+    "mbtiles-maps",
+    "KML"
+  ],
+  "authors": [
+    "George Hamilton <george.hamilton@ed.ac.uk>",
+    "Murray King <murray.king@ed.ac.uk>",
+    "Panos Terzis <p.terzis@ed.ac.uk>"
+  ],
+  "license": "BSD",
+  "dependencies": {
+    "jquery": "^1.11.2",
+    "cobweb-los-plugin": "0.0.1"
+  },
+  "devDependencies": {
+    "jshint": "2.5.3",
+    "release-it": "0.0.15"
+  },
+  "bugs": {
+    "url": "https://github.com/edina/fieldtrip-overlays/issues"
+  },
+  "homepage": "https://github.com/edina/fieldtrip-overlays"
+}
