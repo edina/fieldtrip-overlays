@@ -121,7 +121,18 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
         var $target = $(event.target);
         var layer = $("label[for='"+$target.attr('id')+"']").text();
 
-        var itemUrl = pcapi.buildFSUserUrl(utils.getAnonymousUserId(), TILES_FOLDER, layer);
+        var itemUrl;
+
+        // COBWEB uses the anonymous user id for downloading layers,
+        // so if its defined use it.
+        var annonUserId = utils.getAnonymousUserId();
+        if(annonUserId){
+            itemUrl = pcapi.buildFSUserUrl(utils.getAnonymousUserId(), TILES_FOLDER, layer);
+        }
+        else{
+            itemUrl = pcapi.buildFSUrl(TILES_FOLDER, layer);
+        }
+
         var target = file.appendFile(layersDir, layer);
 
         // Download or delete the editor from the device
@@ -249,7 +260,6 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
 
     //initialize pcapi
     pcapi.init({"url": root, "version": utils.getPCAPIVersion()});
-    pcapi.setUserId(utils.getAnonymousUserId());
 
     $(document).on('pageshow', '#map-page', function(){
         $( "body>[data-role='panel']" ).panel();
@@ -259,7 +269,6 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
     $(document).on('pageshow', '#saved-layers-page', savedLayersPage);
 
     //download layer event
-    //$(document).on('vclick', '.download-layer', downloadLayer);
     $(document).on('change', '.download-layer', downloadLayer);
 
     // click on layer on map side panel
