@@ -1,6 +1,6 @@
 {
   "name": "fieldtrip-overlays",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A fieldtrip plugin for adding layers to a map",
   "main": "src/www/js/overlays.js",
   "scripts": {
