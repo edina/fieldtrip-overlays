@@ -66,7 +66,8 @@ define(['map', 'file', 'utils', './database'], function(map, file, utils, db){
         getURLasync: function(bounds, callback, scope) {
             var url = OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
             var data = url.match(/\/(\d+)/g).join("").split("/");
-            db.getTiles(callback, scope, data[2], data[3], data[1], url);
+            var len = data.length;
+            db.getTiles(callback, scope, data[len-2], data[len-1], data[len-3], url);
         },
         getURL: function(bounds) {
             return OpenLayers.Layer.TMS.prototype.getURL.apply(this, [bounds]);
