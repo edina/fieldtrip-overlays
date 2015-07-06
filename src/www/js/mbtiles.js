@@ -99,6 +99,7 @@ return{
             serviceVersion: ''
         });
         map.addMapLayer(tileLayer);
+        map.moveLayerUnderAnnotation(tileLayer);
 
         db.getBBox(function(data){
             var bounds = new OpenLayers.Bounds(
