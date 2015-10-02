@@ -43,72 +43,34 @@ require.config({
 define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], function(// jshint ignore:line
     map, file, utils, settings, _pcapi, records, mbtiles){
 
-    var layersDir, root, layers = [];
+    var layersDir;
     var TILES_FOLDER = 'features';
+    var LAYER_TYPE = 'mbtiles';
 
     /**
      * check for layers inside a dir
      * @param dir the name of the directory to look in
      * @callback
      */
-    var checkForLayers = function(dir, callback){
-        layers = [];
+    var checkForLayers = function(dir, callback) {
         var directoryReader = dir.createReader();
-        directoryReader.readEntries(function(entries){
-            for(var i=0;i<entries.length;i++){
-                //Android creates automatically a <dbname>.db-journal file when
-                //it opens the db. We don't want to list it.
-                if(entries[i].name.indexOf("-journal") === -1){
-                    layers.push(entries[i].name);
+        directoryReader.readEntries(function(entries) {
+            var id, name, options, fileEntry;
+
+            for (var i = 0; i < entries.length; i++) {
+                fileEntry = entries[i];
+
+                if (fileEntry.name.indexOf('-journal') === -1) {
+                    id = fileEntry.name;
+                    name = fileEntry.name;
+                    options = {
+                        fileURL: fileEntry.toURL()
+                    };
+
+                    map.addLayerToLayersList(id, name, LAYER_TYPE, options);
                 }
-            }
-            if(callback){
-                callback(layers);
             }
         });
-    };
-
-    /**
-     * Create layers list on the panel on map page.
-     */
-    var createLayersListForMap = function(){
-        var $layersList = $("#map-page-layers-list");
-        $layersList.empty();
-        var list = [];
-        if(utils.isMobileDevice()){
-            list.push('<li data-role="list-divider">Layers</li>');
-            if(layers.length>0){
-                for(var i=0; i<layers.length; i++){
-                    var layer = layers[i];
-                    var checked = '';
-                    if(map.layerExists(layer)){
-                        checked = 'checked';
-                    }
-                    list.push('<li><label for="flip-checkbox-'+ i +'">'+layer+'</label>\
-                          <input data-role="flipswitch"\
-                                name="flip-checkbox-'+ i +'"\
-                                id="flip-checkbox-'+ i +'"\
-                                class="show-layer" type="checkbox" '+ checked +'></li>');
-                }
-            }
-            $layersList.html(list.join(""));
-            $('input[data-role="flipswitch"]', "#map-page-layers-list").flipswitch();
-            $layersList.listview("refresh");
-        }
-        else{
-            if(pcapi.getUser() !== undefined){
-                pcapi.setUserId(pcapi.getUser().id);
-                pcapi.getFSItems(TILES_FOLDER).then(function(data){
-                    list.push('<li data-role="list-divider">OnLine</li>');
-                    $.each(data.metadata, $.proxy(function(i, item){
-                        var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
-                        list.push('<li><a href="javascript:void(0)" class="show-layer">'+fileName+'</a></li>');
-                    }, this));
-                    $layersList.html(list.join(""));
-                    $layersList.listview("refresh");
-                });
-            }
-        }
     };
 
     /**
@@ -148,7 +110,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
         }else{
             utils.showPageLoadingMsg('Delete Layer '+layer);
             file.deleteFile(layer, layersDir, function(){
-                layers.splice($.inArray(layer, layers), 1);
+                map.removeLayersFromLayerList(layer);
                 $.mobile.loading('hide');
             });
 
@@ -160,6 +122,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
      */
     var savedLayersPage = function(){
         var $layersList = $(".layers-list");
+        var layers = map.getLayersFromLayerList();
         var list = [];
 
         utils.showPageLoadingMsg('Checking for Layers ');
@@ -170,7 +133,7 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
             $.each(data.metadata, $.proxy(function(i, item){
                 var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
                 var checked = '';
-                if($.inArray(fileName, layers) > -1){
+                if (layers.hasOwnProperty(fileName)) {
                     checked = 'checked';
                 }
                 list.push('<li><label for="flip-checkbox-'+ i +'">'+fileName+'</label>\
@@ -187,17 +150,23 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
     };
 
     /**
-     * Display overlay.
+     * Show a POI layer adding it if necessary
+     * @param layerMetadata {Object}
+     *     - id {String} layer identifier
+     *     - name {String} layer name
+     *     - options {Object} options for the layer
      */
-    var showLayer = function(event){
+    var showLayer = function(layerMetadata) {
         var $target = $(event.target);
-        var layerName = $("label[for='"+$target.attr('id')+"']").text();
+        //var layerName = $("label[for='"+$target.attr('id')+"']").text();
+        var layerName = layerMetadata.name;
 
         var layerType;
-        if($target.prop('checked')){
-            if(!map.layerExists(layerName)){
-                layerType = layerName.match(/\.(.*)$/)[1];
-                switch(layerType){
+        // if($target.prop('checked')){
+        if (!map.layerExists(layerName)) {
+            layerType = layerName.match(/\.(.*)$/)[1];
+
+            switch (layerType) {
                 case 'db':
                 case 'mbtiles':
                     mbtiles.showMbTilesLayer(layerName);
@@ -205,72 +174,124 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
                 case 'kml':
                     var kml = file.appendFile(layersDir, layerName);
                     var layer = map.addKMLLayer({
-                        'id': layerName,
-                        'url': kml
+                        id: layerName,
+                        url: kml
                     });
 
-                    layer.events.register("loadend", this, function(){
+                    layer.events.register('loadend', this, function() {
                         map.zoomToExtent(layer.getDataExtent());
                     });
 
                     $('#map-page-layers-panel').panel('close');
-                    createLayersListForMap();
-
                     break;
                 default:
-                    utils.inform("Don't know how to display " + layerName);
-                }
-            }
-            else{
-                map.showLayerByName(layerName);
+                    utils.inform('Don\'t know how to display ' + layerName);
             }
         }
-        else{
-            map.hideLayerByName(layerName);
+        else {
+            map.showLayerByName(layerName);
         }
     };
 
-    if(utils.isMobileDevice()){
-        // check settings first for defined pcapi root url
-        root = settings.get("pcapi-url");
-        if(root === undefined){
-            root = utils.getPCAPIURL();
+    /**
+     * Hide a layer
+     * @param layerMetadata {Object}
+     *     - id {String} layer identifier
+     *     - name {String} layer name
+     *     - options {Object} options for the layer
+     */
+    var hideLayer = function(layerMetadata) {
+        var layerName = layerMetadata.name;
+        map.hideLayerByName(layerName);
+    };
+
+    /**
+     * Zom to the extent of the layer
+     * @param layerMetadata {Object}
+     *     - id {String} layer identifier
+     *     - name {String} layer name
+     *     - options {Object} options for the layer
+     */
+    var zoomToExtentLayer = function(layerMetadata) {
+        var layerName = layerMetadata.name;
+        var layer = map.getLayerByName(layerName);
+        if (layer) {
+            map.zoomToExtent(layer);
+        }
+    };
+
+    /**
+     * Initialize the tiles directory and scan for tiles
+     */
+    var initLayersLocation = function() {
+        var root;
+
+        if (utils.isMobileDevice()) {
+            // check settings first for defined pcapi root url
+            root = settings.get('pcapi-url');
+
+            if (root === undefined) {
+                root = utils.getPCAPIURL();
+            }
+
+            file.createDir({
+                name: TILES_FOLDER,
+                success: function(dir) {
+                    layersDir = dir;
+                    mbtiles.init(layersDir);
+                    checkForLayers(layersDir);
+
+                }
+            });
+
+        }
+        else {
+            root = 'http://' + location.hostname;
+            if (location.port) {
+                root += ':' + location.port;
+            }
         }
 
-        file.createDir({
-            'name': TILES_FOLDER,
-            'success': function(dir){
-                layersDir = dir;
-                mbtiles.init(layersDir);
-                checkForLayers(layersDir);
+        //initialize pcapi
+        pcapi.init({url: root, version: utils.getPCAPIVersion()});
+    };
 
+   /**
+     * Perform initialization actions for the the plugin
+     */
+    var initPlugin = function() {
+        initLayersLocation();
+
+        // Listen for on/off events in the layer list
+        map.suscribeToLayersControl({
+            enableLayer: function(event, layerMetadata) {
+                if (layerMetadata.type === LAYER_TYPE) {
+                    showLayer(layerMetadata);
+                }
+            },
+            disableLayer: function(event, layerMetadata) {
+                if (layerMetadata.type === LAYER_TYPE) {
+                    hideLayer(layerMetadata);
+                }
+            },
+            clickLayer: function(event, layerMetadata) {
+                if (layerMetadata.type === LAYER_TYPE) {
+                    zoomToExtentLayer(layerMetadata);
+                }
             }
         });
 
-    }
-    else{
-        root = 'http://' + location.hostname;
-        if(location.port){
-            root += ':' + location.port;
-        }
-    }
+        $(document).on('pageshow', '#saved-layers-page', savedLayersPage);
 
-    //initialize pcapi
-    pcapi.init({"url": root, "version": utils.getPCAPIVersion()});
+        //download layer event
+        $(document).on('change', '.download-layer', downloadLayer);
 
-    $(document).on('pageshow', '#map-page', function(){
-        $( "body>[data-role='panel']" ).panel();
-        createLayersListForMap();
-    });
+        // click on layer on map side panel
+        $(document).on('change', '.show-layer', showLayer);
 
-    $(document).on('pageshow', '#saved-layers-page', savedLayersPage);
+        $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
+    };
 
-    //download layer event
-    $(document).on('change', '.download-layer', downloadLayer);
-
-    // click on layer on map side panel
-    $(document).on('change', '.show-layer', showLayer);
-
-    $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
+    initPlugin();
 
 });
