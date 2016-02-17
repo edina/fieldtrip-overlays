@@ -30,18 +30,12 @@ DAMAGE.
 
 /* global pcapi */
 
-// TODO - currently no support for requirejs in pcapi
-require.config({
-    paths: {
-        "pcapi": "../plugins/overlays/js/ext/pcapi",
-    }
-});
-
 /**
  * TODO
  */
-define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], function(// jshint ignore:line
-    map, file, utils, settings, _pcapi, records, mbtiles){
+/* jshint ignore:start */
+define(['map', 'file', 'utils', 'settings', 'records', './mbtiles', './ext/pcapi'], function(/* jshint ignore:end */
+    map, file, utils, settings, records, mbtiles, pcapi){// jshint ignore:line
 
     var layersDir;
     var TILES_FOLDER = 'features';
@@ -288,6 +282,11 @@ define(['map', 'file', 'utils', 'settings', 'pcapi', 'records', './mbtiles'], fu
 
         // click on layer on map side panel
         $(document).on('change', '.show-layer', showLayer);
+
+        $(document).on('change', '#settings-pcapi-url', function(){
+            pcapi.setCloudProviderUrl(
+                $('#settings-pcapi-url option:selected').val());
+        });
 
         $('head').prepend('<link rel="stylesheet" href="plugins/overlays/css/style.css" type="text/css" />');
     };
