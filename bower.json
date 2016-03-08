@@ -10,7 +10,7 @@
   "description": "Overlays is a Fieldtrip Open plugin for adding overlays to the map.",
   "main": "",
   "dependencies": {
-    "pcapi": "0.1.8"
+    "pcapi": "0.1.9"
   },
   "keywords": [
     "fieldtrip-open",
