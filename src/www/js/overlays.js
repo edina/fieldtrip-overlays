@@ -123,19 +123,21 @@ define(['map', 'file', 'utils', 'settings', 'records', './mbtiles', './ext/pcapi
 
         //fetch the metadata from mbtiles and add them to the listview
         pcapi.getFSItems(TILES_FOLDER, utils.getAnonymousUserId()).then(function(data){
+            if(data.hasOwnProperty('metadata')){
+                $.each(data.metadata, $.proxy(function(i, item){
+                    var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
+                    var checked = '';
+                    if (layers.hasOwnProperty(fileName)) {
+                        checked = 'checked';
+                    }
+                    list.push('<li><label for="flip-checkbox-'+ i +'">'+fileName+'</label>\
+                                 <input data-role="flipswitch"\
+                                        name="flip-checkbox-'+ i +'"\
+                                        id="flip-checkbox-'+ i +'"\
+                                        class="download-layer" type="checkbox" '+ checked +'></li>');
+                }, this));
+            }
 
-            $.each(data.metadata, $.proxy(function(i, item){
-                var fileName = item.substring(item.lastIndexOf('/') + 1, item.length);
-                var checked = '';
-                if (layers.hasOwnProperty(fileName)) {
-                    checked = 'checked';
-                }
-                list.push('<li><label for="flip-checkbox-'+ i +'">'+fileName+'</label>\
-                          <input data-role="flipswitch"\
-                                name="flip-checkbox-'+ i +'"\
-                                id="flip-checkbox-'+ i +'"\
-                                class="download-layer" type="checkbox" '+ checked +'></li>');
-            }, this));
             $layersList.html(list.join(""));
             $('input[data-role="flipswitch"]', ".layers-list").flipswitch();
             $layersList.listview("refresh");
