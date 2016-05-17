@@ -35,6 +35,13 @@ define(function(){
         if(!window.sqlitePlugin){
             console.debug("The is something wrong with slqite cordova plugin");
         }else{
+            // Make the path relative to ~/Documents for iOS
+            if (window.cordova.platformId === 'ios' ) {
+                var documentsPath = window.cordova
+                            .file.documentsDirectory.replace(/^file:\/\//, '');
+                dbname = dbname.replace(documentsPath, '');
+            }
+
             localdb = window.sqlitePlugin.openDatabase({name: dbname});
             console.debug("success opening db: "+dbname);
         }
