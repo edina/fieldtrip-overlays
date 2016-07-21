@@ -202,18 +202,14 @@ define(['map', 'file', 'utils', 'settings', 'records', './mbtiles', './ext/pcapi
     };
 
     /**
-     * Zom to the extent of the layer
+     * Zoom to the extent of the layer
      * @param layerMetadata {Object}
      *     - id {String} layer identifier
      *     - name {String} layer name
      *     - options {Object} options for the layer
      */
-    var zoomToExtentLayer = function(layerMetadata) {
-        var layerName = layerMetadata.name;
-        var layer = map.getLayerByName(layerName);
-        if (layer) {
-            map.zoomToExtent(layer);
-        }
+    var zoomToLayerExtent = function(layerMetadata){
+        mbtiles.zoomToExtent();
     };
 
     /**
@@ -272,7 +268,7 @@ define(['map', 'file', 'utils', 'settings', 'records', './mbtiles', './ext/pcapi
             },
             clickLayer: function(event, layerMetadata) {
                 if (layerMetadata.type === LAYER_TYPE) {
-                    zoomToExtentLayer(layerMetadata);
+                    zoomToLayerExtent(layerMetadata);
                 }
             }
         });

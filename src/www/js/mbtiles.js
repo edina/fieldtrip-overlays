@@ -87,7 +87,6 @@ return{
      */
     showMbTilesLayer: function(layerName){
         var dbname = file.getFilePathWithoutProtocol(this.layersDir) + '/' + layerName;
-        var projections = map.getProjections();
         var tileLayer = new MapWithLocalMBTiles({
             name: layerName,
             dbname: dbname,
@@ -100,17 +99,22 @@ return{
         });
         map.addMapLayer(tileLayer);
         map.moveLayerUnderAnnotation(tileLayer);
+        this.zoomToExtent();
+    },
 
+    /**
+     * Zoom to the extent of the mbtile layer.
+     */
+    zoomToExtent: function(){
         db.getBBox(function(data){
             var bounds = new OpenLayers.Bounds(
                 map.tile2long(data.minx, data.z),
                 map.tileTMS2lat(data.miny, data.z),
                 map.tile2long(data.maxx, data.z),
                 map.tileTMS2lat(data.maxy, data.z));
-            bounds.transform(projections[1], projections[0]);
-            map.zoomToExtent(bounds);
+            map.zoomToExtent(bounds, true);
         });
-    }
+    },
 };
 
 });
